@@ -7,75 +7,118 @@
 <title>Meat Probe Monitor</title>
 <style>
 :root {
-  --bg: #f6f4f1; --card: #ffffff; --ink: #1d1b19; --muted: #6b6560; --line: #e3ded8;
+  --bg: #f6f4f1; --card: #ffffff; --ink: #1d1b19; --muted: #6b6560; --line: #e3ded8; --field: #f6f4f1;
   --accent: #c2410c; --accent-ink: #ffffff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
-  --p1: #c2410c; --p2: #2563eb; --track: #ece7e1;
+  --p1: #c2410c; --p2: #2563eb; --track: #ece7e1; --scrim: rgba(0,0,0,.35);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #141210; --card: #1f1c19; --ink: #f3efea; --muted: #a39b93; --line: #34302b;
+    --bg: #141210; --card: #1f1c19; --ink: #f3efea; --muted: #a39b93; --line: #34302b; --field: #171513;
     --accent: #f97316; --accent-ink: #1a0f06; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
-    --p1: #fb923c; --p2: #60a5fa; --track: #2c2824;
+    --p1: #fb923c; --p2: #60a5fa; --track: #2c2824; --scrim: rgba(0,0,0,.6);
   }
 }
 :root[data-theme="dark"] {
-  --bg: #141210; --card: #1f1c19; --ink: #f3efea; --muted: #a39b93; --line: #34302b;
+  --bg: #141210; --card: #1f1c19; --ink: #f3efea; --muted: #a39b93; --line: #34302b; --field: #171513;
   --accent: #f97316; --accent-ink: #1a0f06; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
-  --p1: #fb923c; --p2: #60a5fa; --track: #2c2824;
+  --p1: #fb923c; --p2: #60a5fa; --track: #2c2824; --scrim: rgba(0,0,0,.6);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font: 16px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-text-size-adjust: 100%; }
-body { padding: max(16px, env(safe-area-inset-top)) 16px 32px; max-width: 1100px; margin: 0 auto; }
-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
-.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+body { padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left));
+  max-width: 1280px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 12px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 button, select, input { font: inherit; color: inherit; }
-button { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 9px 14px; cursor: pointer; min-height: 44px; }
+button { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 14px; cursor: pointer; min-height: 44px; }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.icon { width: 44px; padding: 0; display: inline-grid; place-items: center; }
+button.icon svg { width: 22px; height: 22px; }
 button:disabled { opacity: .5; cursor: default; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; min-width: 52px; }
+.seg button { border: 0; border-radius: 0; min-width: 50px; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-.notice { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--warn); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; color: var(--muted); }
+.notice { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--warn); border-radius: 10px; padding: 10px 14px; color: var(--muted); }
 .notice[hidden] { display: none; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; position: relative; }
-.card::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 4px; border-radius: 0 4px 4px 0; background: var(--pc); }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.name { border: 0; background: transparent; font-size: 18px; font-weight: 600; width: 100%; padding: 4px 0; min-width: 0; }
-.name:focus { outline: 2px solid var(--line); border-radius: 6px; }
-.status { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+
+/* Two probes side by side (landscape); stacked on narrow portrait screens */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+.card { background: var(--card); border: 1px solid var(--line); border-top: 5px solid var(--pc); border-radius: 16px; padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card.ringing { animation: ring 1s infinite alternate; }
+@keyframes ring { to { box-shadow: 0 0 0 4px var(--bad); } }
+.head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ttl { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.nameBtn { min-height: 0; max-width: 100%; border: 0; background: transparent; padding: 0 6px 0 0; display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 19px; font-weight: 700; }
+.nameBtn .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nameBtn svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.status { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; max-width: 100%; min-width: 0; overflow: hidden; }
+.status .bat { overflow: hidden; text-overflow: ellipsis; margin-left: -4px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
 .dot.on { background: var(--ok); } .dot.busy { background: var(--warn); }
-.temp { font-size: 72px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.temp small { font-size: 28px; font-weight: 600; color: var(--muted); margin-left: 2px; }
-.sub { display: flex; gap: 16px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+
+.readings { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 10px; align-items: start; }
+.rd { min-width: 0; }
+.rd > label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 2px; }
+.big { font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mid { font-size: 36px; font-weight: 650; line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.big small, .mid small { font-size: .42em; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.note { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 16px; }
+.note.cal { color: var(--accent); }
+
 .pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.pick label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-select, input[type=number] { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 10px; min-height: 44px; width: 100%; }
-.target { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.target b { font-size: 22px; font-variant-numeric: tabular-nums; }
-.target span { color: var(--muted); font-size: 14px; }
-.bar { height: 12px; background: var(--track); border-radius: 6px; overflow: hidden; }
+.pick.custom { grid-template-columns: 1fr 1fr 110px; }
+.pick label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+select, input[type=number], input[type=text] { border: 1px solid var(--line); background: var(--field); border-radius: 10px; padding: 8px 10px; min-height: 44px; width: 100%; min-width: 0; }
+.customWrap[hidden] { display: none; }
+
+.bar { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
 .bar > div { height: 100%; width: 0%; background: var(--pc); transition: width .6s; }
-.eta { font-size: 18px; font-weight: 600; }
+.foot { min-height: 52px; display: flex; align-items: center; }
+.eta { font-size: 18px; font-weight: 600; width: 100%; }
 .eta span { display: block; font-size: 13px; font-weight: 400; color: var(--muted); }
-.alarm { background: var(--bad); color: #fff; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-weight: 600; animation: pulse 1s infinite alternate; }
-.alarm.soon { background: var(--warn); color: #1a1206; animation: none; }
+.alarm { width: 100%; background: var(--bad); color: #fff; border-radius: 12px; padding: 8px 8px 8px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-weight: 600; }
+.alarm.soon { background: var(--warn); color: #1a1206; }
 .alarm button { background: #fff; color: #111; border: 0; font-weight: 600; }
-.alarm[hidden] { display: none; }
-@keyframes pulse { to { opacity: .75; } }
-details { font-size: 13px; color: var(--muted); }
-details code { display: block; margin-top: 6px; word-break: break-all; font-family: ui-monospace, Menlo, monospace; }
-.chart { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-top: 16px; }
-.chart h2 { font-size: 16px; margin: 0 0 8px; }
-.legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 8px; flex-wrap: wrap; }
+.alarm[hidden], .eta[hidden] { display: none; }
+
+.chart { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 10px 16px 12px; flex: 1; display: flex; flex-direction: column; min-height: 200px; }
+.chartHead { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+.chartHead h2 { font-size: 15px; margin: 0; }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--muted); flex-wrap: wrap; margin-right: auto; }
 .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
-canvas { width: 100%; height: 260px; display: block; }
-footer { margin-top: 16px; font-size: 13px; color: var(--muted); }
-@media (max-width: 400px) { .temp { font-size: 60px; } }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-height: 36px; }
+.toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
+.canvasWrap { flex: 1; position: relative; min-height: 170px; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+footer { font-size: 12px; color: var(--muted); }
+
+/* Settings sheet */
+.scrim { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.scrim[hidden] { display: none; }
+.sheet { background: var(--card); border: 1px solid var(--line); border-radius: 18px; width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+.sheet h2 { margin: 0; font-size: 19px; }
+.sheetHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 600px) { .cols { grid-template-columns: 1fr; } }
+.box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.box h3 { margin: 0; font-size: 15px; }
+.box p { margin: 0; font-size: 13px; color: var(--muted); }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper output { flex: 1; text-align: center; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stepper button { width: 52px; font-size: 22px; padding: 0; }
+.inline { display: flex; gap: 8px; }
+.inline input { flex: 1; }
+.sheet label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.sheet code { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
+.sheetFoot { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
+
+@media (max-width: 900px) { .big { font-size: 54px; } .mid { font-size: 30px; } }
+@media (max-width: 400px) { .readings { grid-template-columns: 1fr 1fr; } .readings .tg { grid-column: span 2; } }
 </style>
 </head>
 <body>
@@ -96,40 +139,78 @@ footer { margin-top: 16px; font-size: 13px; color: var(--muted); }
 <div class="grid" id="cards"></div>
 
 <section class="chart">
-  <h2>Temperature graph</h2>
-  <div class="legend" id="legend"></div>
-  <canvas id="chart"></canvas>
+  <div class="chartHead">
+    <h2>Temperature graph</h2>
+    <div class="legend" id="legend"></div>
+    <label class="toggle"><input type="checkbox" id="showAmb"> Show ambient</label>
+  </div>
+  <div class="canvasWrap"><canvas id="chart"></canvas></div>
 </section>
 
 <footer>
-  Tip: set Auto-Lock to "Never" while cooking. If the screen locks, the probes disconnect. Food continues to rise 2–5° while resting, so the targets here are "take it off the heat" temperatures. Chicken, turkey, burgers and sausages should always be cooked through.
+  Set Auto-Lock to "Never" while cooking: if the screen locks, the probes disconnect. Targets are "take it off the heat" temperatures; food rises 2–5° while resting. Always cook chicken, turkey, burgers and sausages through.
 </footer>
 
 <template id="cardTpl">
   <div class="card">
-    <div class="row">
-      <input class="name" aria-label="Probe name">
-      <div class="status"><i class="dot"></i><span class="stxt">Not connected</span></div>
-    </div>
-    <div class="row">
-      <div class="temp"><span class="tval">--</span><small class="tunit">°C</small></div>
+    <div class="head">
+      <div class="ttl">
+      <button class="nameBtn" aria-label="Rename probe"><span class="nm"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+      <div class="status"><i class="dot"></i><span class="stxt">Not connected</span><span class="bat"></span></div>
+      </div>
+      <button class="icon gear" aria-label="Probe settings and calibration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </button>
       <button class="primary conn">Connect</button>
     </div>
-    <div class="sub"><span class="amb">Ambient --</span><span class="bat">Battery --</span></div>
-    <div class="alarm" hidden><span class="atxt"></span><button class="stop">OK</button></div>
+    <div class="readings">
+      <div class="rd"><label>Internal</label><div class="big"><span class="tval">--</span><small class="u">°C</small></div><div class="note calI"></div></div>
+      <div class="rd"><label>Ambient</label><div class="mid"><span class="aval">--</span><small class="u">°C</small></div><div class="note calA"></div></div>
+      <div class="rd tg"><label>Target</label><div class="mid"><span class="tgt">--</span><small class="u">°C</small></div></div>
+    </div>
     <div class="pick">
       <label>Meat<select class="meat"></select></label>
       <label>Doneness<select class="level"></select></label>
+      <label class="customWrap" hidden>Target °<span class="u2">C</span><input type="number" class="custom" inputmode="decimal" step="1"></label>
     </div>
-    <label class="customWrap" hidden style="font-size:13px;color:var(--muted)">Custom target<input type="number" class="custom" inputmode="decimal" step="1"></label>
-    <div>
-      <div class="target"><span>Target</span><b class="tgt">--</b></div>
-      <div class="bar"><div></div></div>
+    <div class="bar"><div></div></div>
+    <div class="foot">
+      <div class="eta">--<span>Ready time appears once the temperature is rising steadily.</span></div>
+      <div class="alarm" hidden><span class="atxt"></span><button class="stop">OK</button></div>
     </div>
-    <div class="eta">--<span>Ready time appears once the temperature is rising steadily.</span></div>
-    <details><summary>Raw Bluetooth data</summary><code class="raw">none yet</code><button class="all" style="margin-top:8px">Can't find the probe? Show all devices</button></details>
   </div>
 </template>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheetHead"><h2 id="sheetTitle">Probe settings</h2><button class="primary" id="sDone">Done</button></div>
+    <label class="f">Name<input type="text" id="sName" maxlength="30" autocomplete="off"></label>
+    <div class="cols">
+      <div class="box">
+        <h3>Internal (meat) calibration</h3>
+        <p id="sIntNow">Reading now: --</p>
+        <div class="stepper"><button id="iMinus" aria-label="Lower internal offset">−</button><output id="iOff">0.0°</output><button id="iPlus" aria-label="Raise internal offset">+</button></div>
+        <div class="inline"><input type="number" id="iRef" inputmode="decimal" step="0.1" placeholder="Reference reads…"><button id="iSet">Match</button></div>
+        <button id="iIce">Probe is in iced water (set to 0°C)</button>
+      </div>
+      <div class="box">
+        <h3>Ambient calibration</h3>
+        <p id="sAmbNow">Reading now: --</p>
+        <div class="stepper"><button id="aMinus" aria-label="Lower ambient offset">−</button><output id="aOff">0.0°</output><button id="aPlus" aria-label="Raise ambient offset">+</button></div>
+        <div class="inline"><input type="number" id="aRef" inputmode="decimal" step="0.1" placeholder="Reference reads…"><button id="aSet">Match</button></div>
+        <p>Compare against an oven thermometer placed next to the probe's handle.</p>
+      </div>
+    </div>
+    <p style="margin:0;font-size:13px;color:var(--muted)">Calibration adds or subtracts a fixed amount to this probe's readings and is remembered on this device. To check the internal sensor, stand the probe in a glass packed with ice and a little water for 2 minutes: it should read 0°C.</p>
+    <div class="sheetFoot">
+      <button id="sReset">Reset calibration</button>
+      <button id="sAll">Can't find the probe? Show all devices</button>
+    </div>
+    <details><summary style="font-size:13px;color:var(--muted)">Raw Bluetooth data</summary><code id="sRaw">none yet</code></details>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -159,17 +240,22 @@ const SVC_BAT = 'battery_service', CHR_BAT = 'battery_level';
 
 // ---------- Helpers ----------
 const $ = (el, s) => el.querySelector(s);
+const $$ = (el, s) => el.querySelectorAll(s);
+const byId = id => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem('mpm.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('mpm.' + k, JSON.stringify(v)); } catch {} },
 };
 let unit = store.get('unit', 'C');
 const toU = c => unit === 'F' ? c * 9 / 5 + 32 : c;
+const fromU = v => unit === 'F' ? (v - 32) * 5 / 9 : v;
+const dU = c => unit === 'F' ? c * 9 / 5 : c;           // convert a temperature difference
 const fmtT = (c, d = 0) => c == null || isNaN(c) ? '--' : toU(c).toFixed(d);
-const fmtDelta = c => unit === 'F' ? c * 9 / 5 : c;
+const fmtOff = c => { const v = dU(c); return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '°'; };
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const hex = dv => Array.from(new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+const esc = s => String(s).replace(/[<&>"]/g, c => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // Clock (demo mode runs 30x faster so the estimate can be seen)
 let demo = false, demoBase = 0, demoReal = 0;
@@ -211,60 +297,115 @@ async function keepAwake() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && probes.some(p => p.connected)) keepAwake(); });
 
 // ---------- Probe state ----------
+// Readings are stored raw (as sent by the probe); calibration offsets are applied when shown/used.
 const probes = [0, 1].map(i => ({
   i, name: store.get(`name${i}`, `Probe ${i + 1}`),
   meat: store.get(`meat${i}`, i === 0 ? 'beef' : 'chickenB'),
   level: store.get(`level${i}`, 2), custom: store.get(`custom${i}`, 60),
-  device: null, chr: null, batChr: null, kind: null, poll: null,
-  connected: false, temp: null, ambient: null, battery: null, caseBattery: null,
+  calInt: store.get(`calInt${i}`, 0), calAmb: store.get(`calAmb${i}`, 0),
+  device: null, chr: null, batChr: null, kind: null, poll: null, rawText: 'none yet',
+  connected: false, raw: null, rawAmb: null, battery: null, caseBattery: null,
   history: [], alarm: null, dismissed: { soon: false, done: false }, el: null, color: i === 0 ? '--p1' : '--p2',
 }));
-
+const tempOf = p => p.raw == null ? null : p.raw + p.calInt;
+const ambOf = p => p.rawAmb == null ? null : p.rawAmb + p.calAmb;
 const meatOf = p => MEATS.find(m => m.id === p.meat) || MEATS[0];
 const targetOf = p => p.meat === 'custom' ? Number(p.custom) : (meatOf(p).levels[p.level] || meatOf(p).levels[0])[1];
 
 // ---------- Build cards ----------
-const tpl = document.getElementById('cardTpl');
-const cards = document.getElementById('cards');
+const tpl = byId('cardTpl');
+const cards = byId('cards');
 probes.forEach(p => {
   const el = tpl.content.firstElementChild.cloneNode(true);
   p.el = el;
   el.style.setProperty('--pc', `var(${p.color})`);
-  const name = $(el, '.name'); name.value = p.name;
-  name.addEventListener('change', () => { p.name = name.value || `Probe ${p.i + 1}`; store.set(`name${p.i}`, p.name); drawLegend(); });
 
   const meat = $(el, '.meat'), level = $(el, '.level');
   MEATS.forEach(m => meat.add(new Option(m.label, m.id)));
   meat.value = p.meat;
-  const fillLevels = () => {
+  p.fillLevels = () => {
     level.innerHTML = '';
     meatOf(p).levels.forEach(([n, t], idx) => level.add(new Option(t == null ? n : `${n} (${fmtT(t)}°)`, idx)));
     if (p.level >= meatOf(p).levels.length) p.level = Math.min(2, meatOf(p).levels.length - 1);
     level.value = p.level;
     level.disabled = meatOf(p).levels.length < 2;
-    $(el, '.customWrap').hidden = p.meat !== 'custom';
+    const isCustom = p.meat === 'custom';
+    $(el, '.customWrap').hidden = !isCustom;
+    $(el, '.pick').classList.toggle('custom', isCustom);
     $(el, '.custom').value = Math.round(toU(Number(p.custom)));
   };
-  p.fillLevels = fillLevels;
-  fillLevels();
-  meat.addEventListener('change', () => { p.meat = meat.value; p.level = Math.min(2, meatOf(p).levels.length - 1); store.set(`meat${p.i}`, p.meat); store.set(`level${p.i}`, p.level); fillLevels(); resetAlarm(p); render(p); });
-  level.addEventListener('change', () => { p.level = Number(level.value); store.set(`level${p.i}`, p.level); resetAlarm(p); render(p); });
+  p.fillLevels();
+  meat.addEventListener('change', () => { p.meat = meat.value; p.level = Math.min(2, meatOf(p).levels.length - 1); store.set(`meat${p.i}`, p.meat); store.set(`level${p.i}`, p.level); p.fillLevels(); resetAlarm(p); render(p); drawChart(); });
+  level.addEventListener('change', () => { p.level = Number(level.value); store.set(`level${p.i}`, p.level); resetAlarm(p); render(p); drawChart(); });
   $(el, '.custom').addEventListener('input', e => {
     const v = Number(e.target.value); if (!v) return;
-    p.custom = unit === 'F' ? (v - 32) * 5 / 9 : v; store.set(`custom${p.i}`, p.custom); resetAlarm(p); render(p);
+    p.custom = fromU(v); store.set(`custom${p.i}`, p.custom); resetAlarm(p); render(p); drawChart();
   });
 
   $(el, '.conn').addEventListener('click', () => { unlockAudio(); p.connected || p.device ? disconnect(p) : connect(p, false); });
-  $(el, '.all').addEventListener('click', () => { unlockAudio(); connect(p, true); });
+  $(el, '.nameBtn').addEventListener('click', () => openSheet(p, true));
+  $(el, '.gear').addEventListener('click', () => openSheet(p, false));
   $(el, '.stop').addEventListener('click', () => { if (p.alarm) p.dismissed[p.alarm] = true; p.alarm = null; render(p); updateAlarmSound(); });
   cards.appendChild(el);
 });
 
 function resetAlarm(p) { p.dismissed = { soon: false, done: false }; p.alarm = null; updateAlarmSound(); }
 
+// ---------- Settings sheet (rename + calibration) ----------
+let sheetP = null;
+const scrim = byId('scrim');
+function openSheet(p, focusName) {
+  sheetP = p;
+  byId('sName').value = p.name;
+  byId('sheetTitle').textContent = `${p.name} settings`;
+  byId('iRef').placeholder = byId('aRef').placeholder = `Reference reads… °${unit}`;
+  byId('iRef').value = byId('aRef').value = '';
+  fillSheet();
+  scrim.hidden = false;
+  if (focusName) setTimeout(() => { byId('sName').focus(); byId('sName').select(); }, 50);
+}
+function fillSheet() {
+  const p = sheetP; if (!p) return;
+  byId('iOff').textContent = fmtOff(p.calInt);
+  byId('aOff').textContent = fmtOff(p.calAmb);
+  const line = (raw, cal) => raw == null ? 'Reading now: -- (connect the probe to see it)' : `Probe sends ${fmtT(raw, 1)}° → shown as ${fmtT(raw + cal, 1)}°${unit}`;
+  byId('sIntNow').textContent = line(p.raw, p.calInt);
+  byId('sAmbNow').textContent = line(p.rawAmb, p.calAmb);
+  byId('sRaw').textContent = p.rawText;
+  byId('iSet').disabled = byId('iIce').disabled = p.raw == null;
+  byId('aSet').disabled = p.rawAmb == null;
+}
+function setCal(p, key, val) {
+  val = Math.round(val * 100) / 100;
+  if (Math.abs(val) > 30) val = Math.sign(val) * 30;
+  p[key] = val; store.set(`${key}${p.i}`, val);
+  fillSheet(); render(p); drawChart();
+}
+function closeSheet() {
+  if (!sheetP) return;
+  const p = sheetP, n = byId('sName').value.trim();
+  p.name = n || `Probe ${p.i + 1}`; store.set(`name${p.i}`, p.name);
+  sheetP = null; scrim.hidden = true;
+  render(p); drawLegend();
+}
+const step = () => unit === 'F' ? 5 / 9 : 0.5;
+byId('iMinus').onclick = () => setCal(sheetP, 'calInt', sheetP.calInt - step());
+byId('iPlus').onclick = () => setCal(sheetP, 'calInt', sheetP.calInt + step());
+byId('aMinus').onclick = () => setCal(sheetP, 'calAmb', sheetP.calAmb - step());
+byId('aPlus').onclick = () => setCal(sheetP, 'calAmb', sheetP.calAmb + step());
+byId('iSet').onclick = () => { const v = parseFloat(byId('iRef').value); if (!isNaN(v) && sheetP.raw != null) setCal(sheetP, 'calInt', fromU(v) - sheetP.raw); };
+byId('aSet').onclick = () => { const v = parseFloat(byId('aRef').value); if (!isNaN(v) && sheetP.rawAmb != null) setCal(sheetP, 'calAmb', fromU(v) - sheetP.rawAmb); };
+byId('iIce').onclick = () => { if (sheetP.raw != null) setCal(sheetP, 'calInt', 0 - sheetP.raw); };
+byId('sReset').onclick = () => { setCal(sheetP, 'calInt', 0); setCal(sheetP, 'calAmb', 0); };
+byId('sAll').onclick = () => { const p = sheetP; closeSheet(); unlockAudio(); connect(p, true); };
+byId('sDone').onclick = closeSheet;
+byId('sName').addEventListener('keydown', e => { if (e.key === 'Enter') closeSheet(); });
+scrim.addEventListener('click', e => { if (e.target === scrim) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) closeSheet(); });
+
 // ---------- Bluetooth ----------
 const hasBt = !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
-if (!hasBt) document.getElementById('noBt').hidden = false;
+if (!hasBt) byId('noBt').hidden = false;
 
 function setStatus(p, text, cls) {
   $(p.el, '.stxt').textContent = text;
@@ -274,7 +415,7 @@ function setStatus(p, text, cls) {
 
 async function connect(p, showAll) {
   if (demo) stopDemo();
-  if (!hasBt) { document.getElementById('noBt').hidden = false; return; }
+  if (!hasBt) { byId('noBt').hidden = false; return; }
   try {
     const opts = {
       optionalServices: [SVC_P, SVC_I, SVC_BAT],
@@ -283,14 +424,13 @@ async function connect(p, showAll) {
     const device = await navigator.bluetooth.requestDevice(opts);
     if (probes.some(q => q !== p && q.device && q.device.id === device.id)) { alert('That probe is already connected in the other panel.'); return; }
     p.device = device;
-    if (!p.name || /^Probe \d$/.test(p.name)) { /* keep user name */ }
     device.addEventListener('gattserverdisconnected', () => onDisconnected(p));
     await openGatt(p);
     keepAwake();
   } catch (e) {
     if (e && e.name === 'NotFoundError') return; // user cancelled
     setStatus(p, 'Could not connect', 'busy');
-    $(p.el, '.raw').textContent = 'Error: ' + (e && e.message || e);
+    p.rawText = 'Error: ' + (e && e.message || e);
   }
 }
 
@@ -319,18 +459,20 @@ async function openGatt(p) {
 }
 
 function onData(p, dv) {
-  $(p.el, '.raw').textContent = `${p.kind === 'P' ? 'fff1' : 'ff01'}: ${hex(dv)}`;
-  let t = null;
+  p.rawText = `${p.kind === 'P' ? 'fff1' : 'ff01'}: ${hex(dv)}`;
+  let t = null, amb;
   if (p.kind === 'P' && dv.byteLength >= 6) {
     t = dv.getUint8(1);
-    const amb = dv.getUint8(3); p.ambient = amb ? amb : null;
+    const a = dv.getUint8(3); amb = a ? a : null;
     p.battery = dv.getUint8(4) & 0x7f;
     p.caseBattery = dv.getUint8(5) >> 1;
   } else if (p.kind === 'I' && dv.byteLength >= 2) {
     const f = dv.getUint16(0, true) / 100;
     t = Math.round((f - 32) * 5 / 9 * 10) / 10;
+    amb = null;
   }
-  if (t != null && t > -40 && t < 400) addReading(p, t);
+  if (t != null && t > -40 && t < 400) addReading(p, t, amb);
+  if (sheetP === p) fillSheet();
 }
 function onBattery(p, dv) {
   if (dv.byteLength >= 2) { p.caseBattery = Math.min(100, dv.getUint8(0)); p.battery = Math.min(100, dv.getUint8(1)); }
@@ -358,11 +500,12 @@ function disconnect(p) {
 }
 
 // ---------- Readings, estimate, alarms ----------
-function addReading(p, t) {
-  p.temp = t;
+function addReading(p, t, amb) {
+  p.raw = t;
+  if (amb !== undefined) p.rawAmb = amb;
   const ts = now();
   const last = p.history[p.history.length - 1];
-  if (!last || ts - last.t >= 5000) p.history.push({ t: ts, v: t });
+  if (!last || ts - last.t >= 5000) p.history.push({ t: ts, v: t, a: p.rawAmb });
   if (p.history.length > 6000) p.history.shift();
   checkAlarm(p);
   render(p);
@@ -370,42 +513,50 @@ function addReading(p, t) {
 }
 
 function estimate(p) {
-  const target = targetOf(p);
-  if (p.temp == null || !target) return null;
-  if (p.temp >= target) return { done: true };
+  const target = targetOf(p), temp = tempOf(p);
+  if (temp == null || !target) return null;
+  if (temp >= target) return { done: true };
   const tNow = now();
   const pts = p.history.filter(h => h.t >= tNow - 10 * 60000);
   if (pts.length < 6 || pts[pts.length - 1].t - pts[0].t < 3 * 60000) return { wait: true };
-  // least-squares slope in °C per minute
+  // least-squares slope in °C per minute (calibration offset doesn't change the slope)
   const n = pts.length, x0 = pts[0].t;
   let sx = 0, sy = 0, sxx = 0, sxy = 0;
   pts.forEach(h => { const x = (h.t - x0) / 60000; sx += x; sy += h.v; sxx += x * x; sxy += x * h.v; });
   const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
   if (!(slope > 0.05)) return { stalled: true, slope };
-  const mins = (target - p.temp) / slope;
+  const mins = (target - temp) / slope;
   return { mins, at: tNow + mins * 60000, slope };
 }
 
 function checkAlarm(p) {
-  const target = targetOf(p);
-  if (p.temp == null || !target) return;
-  if (p.temp >= target) { if (!p.dismissed.done) p.alarm = 'done'; }
-  else if (p.temp >= target - 5) { if (!p.dismissed.soon && p.alarm !== 'soon') { p.alarm = 'soon'; beep(660, .2); beep(880, .2, .3); } }
-  else if (p.temp < target - 8) { p.dismissed = { soon: false, done: false }; p.alarm = null; }
+  const target = targetOf(p), temp = tempOf(p);
+  if (temp == null || !target) return;
+  if (temp >= target) { if (!p.dismissed.done) p.alarm = 'done'; }
+  else if (temp >= target - 5) { if (!p.dismissed.soon && p.alarm !== 'soon') { p.alarm = 'soon'; beep(660, .2); beep(880, .2, .3); } }
+  else if (temp < target - 8) { p.dismissed = { soon: false, done: false }; p.alarm = null; }
   updateAlarmSound();
 }
 
 // ---------- Rendering ----------
 function render(p) {
-  const el = p.el, target = targetOf(p);
-  $(el, '.tval').textContent = fmtT(p.temp, unit === 'F' || p.kind !== 'I' ? 0 : 1);
-  $(el, '.tunit').textContent = '°' + unit;
-  $(el, '.amb').textContent = 'Ambient ' + (p.ambient == null ? '--' : fmtT(p.ambient) + '°' + unit);
-  const bats = [p.battery != null ? `Probe ${p.battery}%` : null, p.caseBattery != null ? `Case ${p.caseBattery}%` : null].filter(Boolean);
-  $(el, '.bat').textContent = 'Battery ' + (bats.length ? bats.join(' · ') : '--');
-  $(el, '.tgt').textContent = target ? `${fmtT(target)}°${unit}` : '--';
-  const start = p.history.length ? Math.min(p.history[0].v, p.temp) : 0;
-  const pct = p.temp == null || !target ? 0 : Math.max(0, Math.min(100, (p.temp - start) / Math.max(1, target - start) * 100));
+  const el = p.el, target = targetOf(p), temp = tempOf(p), amb = ambOf(p);
+  $(el, '.nm').textContent = p.name;
+  $$(el, '.u').forEach(u => u.textContent = '°' + unit);
+  $(el, '.u2').textContent = unit;
+  $(el, '.tval').textContent = fmtT(temp, unit === 'C' && p.kind === 'I' ? 1 : 0);
+  $(el, '.aval').textContent = fmtT(amb);
+  $(el, '.tgt').textContent = target ? fmtT(target) : '--';
+
+  const calI = $(el, '.calI'), calA = $(el, '.calA');
+  calI.textContent = p.calInt ? `Calibrated ${fmtOff(p.calInt)}` : '';
+  calA.textContent = p.calAmb ? `Calibrated ${fmtOff(p.calAmb)}` : (p.connected && p.rawAmb == null && !demo ? 'Not reported' : '');
+  calI.classList.toggle('cal', !!p.calInt); calA.classList.toggle('cal', !!p.calAmb);
+  const bats = [p.battery != null ? `${p.battery}%` : null, p.caseBattery != null ? `case ${p.caseBattery}%` : null].filter(Boolean);
+  $(el, '.bat').textContent = bats.length ? ' · Battery ' + bats.join(', ') : '';
+
+  const start = p.history.length ? Math.min(p.history[0].v + p.calInt, temp) : 0;
+  const pct = temp == null || !target ? 0 : Math.max(0, Math.min(100, (temp - start) / Math.max(1, target - start) * 100));
   $(el, '.bar > div').style.width = pct + '%';
 
   const etaEl = $(el, '.eta'), e = estimate(p);
@@ -416,87 +567,101 @@ function render(p) {
   else if (e.stalled) set('Holding steady', 'Not rising right now (normal during a long-cook "stall"). No estimate yet.');
   else {
     const m = Math.round(e.mins), txt = m < 1 ? 'Under a minute' : m < 60 ? `About ${m} min` : `About ${Math.floor(m / 60)} h ${m % 60} min`;
-    set(`${txt} · ready ~${hhmm(e.at)}`, `Rising ${fmtDelta(e.slope).toFixed(1)}°/min. Rough estimate; it usually slows near the end.`);
+    set(`${txt} · ready ~${hhmm(e.at)}`, `Rising ${dU(e.slope).toFixed(1)}°/min. Rough estimate; it usually slows near the end.`);
   }
 
   const a = $(el, '.alarm');
   if (p.alarm) {
-    a.hidden = false; a.classList.toggle('soon', p.alarm === 'soon');
-    $(el, '.atxt').textContent = p.alarm === 'done' ? `${p.name}: target reached!` : `${p.name}: within 5° of target`;
-  } else a.hidden = true;
+    a.hidden = false; etaEl.hidden = true; a.classList.toggle('soon', p.alarm === 'soon');
+    $(el, '.atxt').textContent = p.alarm === 'done' ? `Target reached! Take ${p.name} off the heat.` : `Nearly there: within 5° of target`;
+  } else { a.hidden = true; etaEl.hidden = false; }
+  el.classList.toggle('ringing', p.alarm === 'done');
 }
 
 // ---------- Chart ----------
-const canvas = document.getElementById('chart');
+const canvas = byId('chart');
+let showAmb = store.get('showAmb', false);
+byId('showAmb').checked = showAmb;
+byId('showAmb').onchange = e => { showAmb = e.target.checked; store.set('showAmb', showAmb); drawLegend(); drawChart(); };
 function drawLegend() {
-  document.getElementById('legend').innerHTML = probes.map(p => `<span><i style="background:var(${p.color})"></i>${p.name.replace(/[<&]/g, '')}</span>`).join('') +
-    '<span><i style="background:repeating-linear-gradient(90deg,var(--muted) 0 4px,transparent 4px 7px)"></i>Targets</span>';
+  byId('legend').innerHTML = probes.map(p => `<span><i style="background:var(${p.color})"></i>${esc(p.name)}</span>`).join('') +
+    '<span><i style="background:repeating-linear-gradient(90deg,var(--muted) 0 4px,transparent 4px 7px)"></i>Targets</span>' +
+    (showAmb ? '<span><i style="background:var(--muted);opacity:.5;height:2px"></i>Ambient</span>' : '');
 }
 function drawChart() {
   const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
-  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  if (!w || !h) return;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
   const c = canvas.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
-  const all = probes.flatMap(p => p.history);
-  const L = 40, R = 10, T = 10, B = 26;
+  const L = 44, R = 10, T = 8, B = 24;
   c.font = '12px -apple-system, system-ui, sans-serif'; c.fillStyle = css('--muted');
-  if (!all.length) { c.textAlign = 'center'; c.fillText('Readings will appear here once a probe is connected.', w / 2, h / 2); return; }
-  const tNow = now(), t0 = Math.min(...all.map(h => h.t)), t1 = Math.max(tNow, t0 + 60000);
-  const targets = probes.filter(p => p.history.length).map(targetOf).filter(Boolean);
-  let lo = Math.min(...all.map(h => h.v)), hi = Math.max(...all.map(h => h.v), ...targets);
+  const series = probes.filter(p => p.history.length);
+  if (!series.length) { c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Readings will appear here once a probe is connected.', w / 2, h / 2); return; }
+  const vals = [], times = [];
+  series.forEach(p => p.history.forEach(hh => {
+    times.push(hh.t); vals.push(hh.v + p.calInt);
+    if (showAmb && hh.a != null) vals.push(hh.a + p.calAmb);
+  }));
+  series.forEach(p => { const tg = targetOf(p); if (tg) vals.push(tg); });
+  const tNow = now(), t0 = Math.min(...times), t1 = Math.max(tNow, t0 + 60000);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
   lo = Math.floor((lo - 3) / 10) * 10; hi = Math.ceil((hi + 3) / 10) * 10;
   const X = t => L + (t - t0) / (t1 - t0) * (w - L - R), Y = v => T + (1 - (v - lo) / (hi - lo)) * (h - T - B);
   // grid
   c.strokeStyle = css('--line'); c.lineWidth = 1; c.textAlign = 'right'; c.textBaseline = 'middle';
-  const step = (hi - lo) > 60 ? 20 : 10;
-  for (let v = lo; v <= hi; v += step) { c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(w - R, Y(v)); c.stroke(); c.fillText(fmtT(v) + '°', L - 6, Y(v)); }
+  const range = hi - lo, gstep = range > 160 ? 40 : range > 80 ? 20 : 10;
+  for (let v = Math.ceil(lo / gstep) * gstep; v <= hi; v += gstep) { c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(w - R, Y(v)); c.stroke(); c.fillText(fmtT(v) + '°', L - 6, Y(v)); }
   c.textAlign = 'center'; c.textBaseline = 'top';
   const span = t1 - t0, tick = span > 4 * 3600e3 ? 3600e3 : span > 90 * 60e3 ? 30 * 60e3 : span > 30 * 60e3 ? 10 * 60e3 : 5 * 60e3;
-  for (let t = Math.ceil(t0 / tick) * tick; t <= t1; t += tick) c.fillText(hhmm(t), X(t), h - B + 8);
-  // targets + lines
-  probes.forEach(p => {
-    if (!p.history.length) return;
+  for (let t = Math.ceil(t0 / tick) * tick; t <= t1; t += tick) c.fillText(hhmm(t), X(t), h - B + 6);
+  const line = (pts, col, width, alpha, dash) => {
+    if (!pts.length) return;
+    c.strokeStyle = col; c.lineWidth = width; c.globalAlpha = alpha; c.setLineDash(dash || []); c.lineJoin = 'round';
+    c.beginPath(); pts.forEach(([t, v], k) => k ? c.lineTo(X(t), Y(v)) : c.moveTo(X(t), Y(v))); c.stroke();
+    c.globalAlpha = 1; c.setLineDash([]); c.lineWidth = 1;
+  };
+  series.forEach(p => {
     const col = css(p.color), tg = targetOf(p);
-    if (tg) { c.setLineDash([5, 4]); c.strokeStyle = col; c.globalAlpha = .6; c.beginPath(); c.moveTo(L, Y(tg)); c.lineTo(w - R, Y(tg)); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
-    c.strokeStyle = col; c.lineWidth = 2.5; c.lineJoin = 'round'; c.beginPath();
-    p.history.forEach((pt, k) => k ? c.lineTo(X(pt.t), Y(pt.v)) : c.moveTo(X(pt.t), Y(pt.v)));
-    c.stroke(); c.lineWidth = 1;
+    if (tg) line([[t0, tg], [t1, tg]], col, 1.5, .7, [6, 5]);
+    if (showAmb) line(p.history.filter(hh => hh.a != null).map(hh => [hh.t, hh.a + p.calAmb]), col, 1.5, .4);
+    line(p.history.map(hh => [hh.t, hh.v + p.calInt]), col, 2.75, 1);
   });
 }
-window.addEventListener('resize', drawChart);
+new ResizeObserver(drawChart).observe(canvas);
 
 // ---------- Units ----------
 function setUnit(u) {
   unit = u; store.set('unit', u);
-  document.getElementById('uC').setAttribute('aria-pressed', u === 'C');
-  document.getElementById('uF').setAttribute('aria-pressed', u === 'F');
+  byId('uC').setAttribute('aria-pressed', u === 'C');
+  byId('uF').setAttribute('aria-pressed', u === 'F');
   probes.forEach(p => { p.fillLevels(); render(p); });
-  drawChart();
+  fillSheet(); drawChart();
 }
-document.getElementById('uC').onclick = () => setUnit('C');
-document.getElementById('uF').onclick = () => setUnit('F');
+byId('uC').onclick = () => setUnit('C');
+byId('uF').onclick = () => setUnit('F');
 
 // ---------- Demo mode ----------
 let demoTimer = null;
-const demoBtn = document.getElementById('demoBtn');
+const demoBtn = byId('demoBtn');
 function startDemo() {
   probes.forEach(disconnect);
   demo = true; demoBase = Date.now(); demoReal = Date.now();
   const sims = [{ v: 6, amb: 180, k: 0.012 }, { v: 4, amb: 200, k: 0.009 }];
-  probes.forEach((p, i) => { p.history = []; p.temp = null; resetAlarm(p); p.battery = 87 - i * 12; p.caseBattery = 64; p.kind = 'P'; p.connected = true; setStatus(p, 'Demo (30× speed)', 'on'); });
+  probes.forEach((p, i) => { p.history = []; p.raw = null; p.rawAmb = null; resetAlarm(p); p.battery = 87 - i * 12; p.caseBattery = 64; p.kind = 'P'; p.connected = true; p.rawText = 'demo'; setStatus(p, 'Demo (30× speed)', 'on'); });
   demoTimer = setInterval(() => {
     probes.forEach((p, i) => {
       const s = sims[i];
       s.v += (s.amb - s.v) * s.k * (SPEED / 60) * 0.5 + (Math.random() - .5) * .3;
-      p.ambient = s.amb + Math.round((Math.random() - .5) * 6);
-      addReading(p, Math.round(s.v * 10) / 10);
+      addReading(p, Math.round(s.v), s.amb + Math.round((Math.random() - .5) * 6));
     });
+    if (sheetP) fillSheet();
   }, 1000);
   demoBtn.textContent = 'Stop demo';
 }
 function stopDemo() {
   clearInterval(demoTimer); demo = false;
-  probes.forEach(p => { p.connected = false; p.history = []; p.temp = null; p.ambient = null; p.battery = null; p.caseBattery = null; resetAlarm(p); setStatus(p, 'Not connected', ''); render(p); });
-  demoBtn.textContent = 'Try demo'; drawChart();
+  probes.forEach(p => { p.connected = false; p.history = []; p.raw = null; p.rawAmb = null; p.battery = null; p.caseBattery = null; p.rawText = 'none yet'; resetAlarm(p); setStatus(p, 'Not connected', ''); render(p); });
+  demoBtn.textContent = 'Try demo'; drawChart(); fillSheet();
 }
 demoBtn.onclick = () => { unlockAudio(); demo ? stopDemo() : startDemo(); };
 
