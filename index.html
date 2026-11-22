@@ -70,6 +70,13 @@ button:disabled { opacity: .5; cursor: default; }
 .note { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 16px; }
 .note.cal { color: var(--accent); }
 
+.tgtBtn { border: 0; background: transparent; padding: 0; min-height: 0; text-decoration: underline dotted 2px; text-underline-offset: 6px; text-decoration-color: var(--line); }
+.tadj { display: flex; gap: 6px; margin-top: 6px; }
+.tadj button { min-height: 34px; height: 34px; width: 44px; padding: 0; font-size: 20px; line-height: 1; }
+.tnote { color: var(--accent); }
+.sheet.small { width: min(440px, 100%); }
+.stepper.bigger output { font-size: 40px; }
+.stepper.bigger button { height: 60px; width: 64px; font-size: 28px; }
 .pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pick.custom { grid-template-columns: 1fr 1fr 110px; }
 .pick label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
@@ -117,6 +124,13 @@ footer { font-size: 12px; color: var(--muted); }
 .sheet code { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
 .sheetFoot { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
 
+@media (orientation: landscape) and (max-height: 820px) {
+  body { gap: 10px; padding-bottom: 10px; }
+  .card { gap: 9px; padding-top: 10px; padding-bottom: 10px; }
+  .chart { min-height: 0; }
+  .canvasWrap { min-height: 140px; }
+  footer { display: none; }
+}
 @media (max-width: 900px) { .big { font-size: 54px; } .mid { font-size: 30px; } }
 @media (max-width: 400px) { .readings { grid-template-columns: 1fr 1fr; } .readings .tg { grid-column: span 2; } }
 </style>
@@ -168,7 +182,11 @@ footer { font-size: 12px; color: var(--muted); }
     <div class="readings">
       <div class="rd"><label>Internal</label><div class="big"><span class="tval">--</span><small class="u">°C</small></div><div class="note calI"></div></div>
       <div class="rd"><label>Ambient</label><div class="mid"><span class="aval">--</span><small class="u">°C</small></div><div class="note calA"></div></div>
-      <div class="rd tg"><label>Target</label><div class="mid"><span class="tgt">--</span><small class="u">°C</small></div></div>
+      <div class="rd tg"><label>Target</label>
+        <button class="tgtBtn mid" aria-label="Set target temperature"><span class="tgt">--</span><small class="u">°C</small></button>
+        <div class="tadj"><button class="tm" aria-label="Lower target">−</button><button class="tp" aria-label="Raise target">+</button></div>
+        <div class="note tnote"></div>
+      </div>
     </div>
     <div class="pick">
       <label>Meat<select class="meat"></select></label>
@@ -182,6 +200,16 @@ footer { font-size: 12px; color: var(--muted); }
     </div>
   </div>
 </template>
+
+<div class="scrim" id="tScrim" hidden>
+  <div class="sheet small" role="dialog" aria-modal="true" aria-labelledby="tTitle">
+    <div class="sheetHead"><h2 id="tTitle">Target</h2><button class="primary" id="tDone">Done</button></div>
+    <div class="stepper bigger"><button id="tMinus" aria-label="Lower target">−</button><output id="tVal">--</output><button id="tPlus" aria-label="Raise target">+</button></div>
+    <label class="f">Or type an exact target<div class="inline"><input type="number" id="tIn" inputmode="decimal" step="1"><button id="tSet">Set</button></div></label>
+    <p id="tInfo" style="margin:0;font-size:13px;color:var(--muted)"></p>
+    <button id="tReset">Back to preset</button>
+  </div>
+</div>
 
 <div class="scrim" id="scrim" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
@@ -302,7 +330,7 @@ const probes = [0, 1].map(i => ({
   i, name: store.get(`name${i}`, `Probe ${i + 1}`),
   meat: store.get(`meat${i}`, i === 0 ? 'beef' : 'chickenB'),
   level: store.get(`level${i}`, 2), custom: store.get(`custom${i}`, 60),
-  calInt: store.get(`calInt${i}`, 0), calAmb: store.get(`calAmb${i}`, 0),
+  calInt: store.get(`calInt${i}`, 0), calAmb: store.get(`calAmb${i}`, 0), tAdj: store.get(`tAdj${i}`, 0),
   device: null, chr: null, batChr: null, kind: null, poll: null, rawText: 'none yet',
   connected: false, raw: null, rawAmb: null, battery: null, caseBattery: null,
   history: [], alarm: null, dismissed: { soon: false, done: false }, el: null, color: i === 0 ? '--p1' : '--p2',
@@ -310,7 +338,19 @@ const probes = [0, 1].map(i => ({
 const tempOf = p => p.raw == null ? null : p.raw + p.calInt;
 const ambOf = p => p.rawAmb == null ? null : p.rawAmb + p.calAmb;
 const meatOf = p => MEATS.find(m => m.id === p.meat) || MEATS[0];
-const targetOf = p => p.meat === 'custom' ? Number(p.custom) : (meatOf(p).levels[p.level] || meatOf(p).levels[0])[1];
+const levelOf = p => meatOf(p).levels[p.level] || meatOf(p).levels[0];
+const presetOf = p => p.meat === 'custom' ? Number(p.custom) : levelOf(p)[1];
+const targetOf = p => p.meat === 'custom' ? Number(p.custom) : presetOf(p) + (p.tAdj || 0);
+const tStep = () => unit === 'F' ? 5 / 9 : 1;
+// Set an exact target (°C). For "Custom" it changes the custom value; otherwise it stores an adjustment from the preset.
+function setTarget(p, c) {
+  if (c == null || isNaN(c)) return;
+  c = Math.max(-20, Math.min(300, Math.round(c * 10) / 10));
+  if (p.meat === 'custom') { p.custom = c; store.set(`custom${p.i}`, c); $(p.el, '.custom').value = Math.round(toU(c)); }
+  else { p.tAdj = Math.round((c - presetOf(p)) * 10) / 10; store.set(`tAdj${p.i}`, p.tAdj); }
+  resetAlarm(p); render(p); drawChart(); fillTargetSheet();
+}
+function clearAdj(p) { p.tAdj = 0; store.set(`tAdj${p.i}`, 0); }
 
 // ---------- Build cards ----------
 const tpl = byId('cardTpl');
@@ -335,8 +375,8 @@ probes.forEach(p => {
     $(el, '.custom').value = Math.round(toU(Number(p.custom)));
   };
   p.fillLevels();
-  meat.addEventListener('change', () => { p.meat = meat.value; p.level = Math.min(2, meatOf(p).levels.length - 1); store.set(`meat${p.i}`, p.meat); store.set(`level${p.i}`, p.level); p.fillLevels(); resetAlarm(p); render(p); drawChart(); });
-  level.addEventListener('change', () => { p.level = Number(level.value); store.set(`level${p.i}`, p.level); resetAlarm(p); render(p); drawChart(); });
+  meat.addEventListener('change', () => { p.meat = meat.value; p.level = Math.min(2, meatOf(p).levels.length - 1); clearAdj(p); store.set(`meat${p.i}`, p.meat); store.set(`level${p.i}`, p.level); p.fillLevels(); resetAlarm(p); render(p); drawChart(); });
+  level.addEventListener('change', () => { p.level = Number(level.value); clearAdj(p); store.set(`level${p.i}`, p.level); resetAlarm(p); render(p); drawChart(); });
   $(el, '.custom').addEventListener('input', e => {
     const v = Number(e.target.value); if (!v) return;
     p.custom = fromU(v); store.set(`custom${p.i}`, p.custom); resetAlarm(p); render(p); drawChart();
@@ -345,11 +385,41 @@ probes.forEach(p => {
   $(el, '.conn').addEventListener('click', () => { unlockAudio(); p.connected || p.device ? disconnect(p) : connect(p, false); });
   $(el, '.nameBtn').addEventListener('click', () => openSheet(p, true));
   $(el, '.gear').addEventListener('click', () => openSheet(p, false));
+  $(el, '.tm').addEventListener('click', () => setTarget(p, targetOf(p) - tStep()));
+  $(el, '.tp').addEventListener('click', () => setTarget(p, targetOf(p) + tStep()));
+  $(el, '.tgtBtn').addEventListener('click', () => openTargetSheet(p));
   $(el, '.stop').addEventListener('click', () => { if (p.alarm) p.dismissed[p.alarm] = true; p.alarm = null; render(p); updateAlarmSound(); });
   cards.appendChild(el);
 });
 
 function resetAlarm(p) { p.dismissed = { soon: false, done: false }; p.alarm = null; updateAlarmSound(); }
+
+// ---------- Target sheet ----------
+let tP = null;
+const tScrim = byId('tScrim');
+function openTargetSheet(p) {
+  tP = p; byId('tIn').value = ''; byId('tIn').placeholder = `°${unit}`;
+  fillTargetSheet(); tScrim.hidden = false;
+}
+function fillTargetSheet() {
+  const p = tP; if (!p) return;
+  byId('tTitle').textContent = `${p.name} target`;
+  byId('tVal').textContent = `${fmtT(targetOf(p))}°${unit}`;
+  const isCustom = p.meat === 'custom';
+  byId('tReset').hidden = isCustom || !p.tAdj;
+  byId('tReset').textContent = `Back to preset: ${levelOf(p)[0]} (${fmtT(presetOf(p))}°)`;
+  byId('tInfo').textContent = isCustom ? 'Custom target.' :
+    p.tAdj ? `${meatOf(p).label}, ${levelOf(p)[0]}: adjusted ${fmtOff(p.tAdj)} from the preset ${fmtT(presetOf(p))}°.` :
+    `Preset for ${meatOf(p).label}, ${levelOf(p)[0]}. Changing the meat or doneness resets any adjustment.`;
+}
+function closeTargetSheet() { tP = null; tScrim.hidden = true; }
+byId('tMinus').onclick = () => setTarget(tP, targetOf(tP) - tStep());
+byId('tPlus').onclick = () => setTarget(tP, targetOf(tP) + tStep());
+byId('tSet').onclick = () => { const v = parseFloat(byId('tIn').value); if (!isNaN(v)) { setTarget(tP, fromU(v)); byId('tIn').value = ''; } };
+byId('tIn').addEventListener('keydown', e => { if (e.key === 'Enter') byId('tSet').click(); });
+byId('tReset').onclick = () => { clearAdj(tP); resetAlarm(tP); render(tP); drawChart(); fillTargetSheet(); };
+byId('tDone').onclick = closeTargetSheet;
+tScrim.addEventListener('click', e => { if (e.target === tScrim) closeTargetSheet(); });
 
 // ---------- Settings sheet (rename + calibration) ----------
 let sheetP = null;
@@ -401,7 +471,7 @@ byId('sAll').onclick = () => { const p = sheetP; closeSheet(); unlockAudio(); co
 byId('sDone').onclick = closeSheet;
 byId('sName').addEventListener('keydown', e => { if (e.key === 'Enter') closeSheet(); });
 scrim.addEventListener('click', e => { if (e.target === scrim) closeSheet(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (!scrim.hidden) closeSheet(); if (!tScrim.hidden) closeTargetSheet(); });
 
 // ---------- Bluetooth ----------
 const hasBt = !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
@@ -547,6 +617,7 @@ function render(p) {
   $(el, '.tval').textContent = fmtT(temp, unit === 'C' && p.kind === 'I' ? 1 : 0);
   $(el, '.aval').textContent = fmtT(amb);
   $(el, '.tgt').textContent = target ? fmtT(target) : '--';
+  $(el, '.tnote').textContent = p.meat !== 'custom' && p.tAdj ? `Adjusted ${fmtOff(p.tAdj)}` : '';
 
   const calI = $(el, '.calI'), calA = $(el, '.calA');
   calI.textContent = p.calInt ? `Calibrated ${fmtOff(p.calInt)}` : '';
@@ -635,7 +706,7 @@ function setUnit(u) {
   byId('uC').setAttribute('aria-pressed', u === 'C');
   byId('uF').setAttribute('aria-pressed', u === 'F');
   probes.forEach(p => { p.fillLevels(); render(p); });
-  fillSheet(); drawChart();
+  fillSheet(); fillTargetSheet(); drawChart();
 }
 byId('uC').onclick = () => setUnit('C');
 byId('uF').onclick = () => setUnit('F');
