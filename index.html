@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Meat Probe Monitor</title>
+<style>
+:root {
+  --bg: #f6f4f1; --card: #ffffff; --ink: #1d1b19; --muted: #6b6560; --line: #e3ded8;
+  --accent: #c2410c; --accent-ink: #ffffff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+  --p1: #c2410c; --p2: #2563eb; --track: #ece7e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141210; --card: #1f1c19; --ink: #f3efea; --muted: #a39b93; --line: #34302b;
+    --accent: #f97316; --accent-ink: #1a0f06; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+    --p1: #fb923c; --p2: #60a5fa; --track: #2c2824;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141210; --card: #1f1c19; --ink: #f3efea; --muted: #a39b93; --line: #34302b;
+  --accent: #f97316; --accent-ink: #1a0f06; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+  --p1: #fb923c; --p2: #60a5fa; --track: #2c2824;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%; }
+body { padding: max(16px, env(safe-area-inset-top)) 16px 32px; max-width: 1100px; margin: 0 auto; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+button, select, input { font: inherit; color: inherit; }
+button { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 9px 14px; cursor: pointer; min-height: 44px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; min-width: 52px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.notice { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--warn); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; color: var(--muted); }
+.notice[hidden] { display: none; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; position: relative; }
+.card::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 4px; border-radius: 0 4px 4px 0; background: var(--pc); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.name { border: 0; background: transparent; font-size: 18px; font-weight: 600; width: 100%; padding: 4px 0; min-width: 0; }
+.name:focus { outline: 2px solid var(--line); border-radius: 6px; }
+.status { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--ok); } .dot.busy { background: var(--warn); }
+.temp { font-size: 72px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.temp small { font-size: 28px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.sub { display: flex; gap: 16px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+.pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pick label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+select, input[type=number] { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 10px; min-height: 44px; width: 100%; }
+.target { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.target b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.target span { color: var(--muted); font-size: 14px; }
+.bar { height: 12px; background: var(--track); border-radius: 6px; overflow: hidden; }
+.bar > div { height: 100%; width: 0%; background: var(--pc); transition: width .6s; }
+.eta { font-size: 18px; font-weight: 600; }
+.eta span { display: block; font-size: 13px; font-weight: 400; color: var(--muted); }
+.alarm { background: var(--bad); color: #fff; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-weight: 600; animation: pulse 1s infinite alternate; }
+.alarm.soon { background: var(--warn); color: #1a1206; animation: none; }
+.alarm button { background: #fff; color: #111; border: 0; font-weight: 600; }
+.alarm[hidden] { display: none; }
+@keyframes pulse { to { opacity: .75; } }
+details { font-size: 13px; color: var(--muted); }
+details code { display: block; margin-top: 6px; word-break: break-all; font-family: ui-monospace, Menlo, monospace; }
+.chart { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-top: 16px; }
+.chart h2 { font-size: 16px; margin: 0 0 8px; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 8px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+canvas { width: 100%; height: 260px; display: block; }
+footer { margin-top: 16px; font-size: 13px; color: var(--muted); }
+@media (max-width: 400px) { .temp { font-size: 60px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Meat Probe Monitor</h1>
+  <div class="tools">
+    <div class="seg" role="group" aria-label="Units">
+      <button id="uC" aria-pressed="true">°C</button><button id="uF" aria-pressed="false">°F</button>
+    </div>
+    <button id="demoBtn">Try demo</button>
+  </div>
+</header>
+
+<div class="notice" id="noBt" hidden>
+  This browser can't use Bluetooth. On iPad or iPhone, open this page in the free <b>Bluefy</b> browser app. Safari won't work. You can still press <b>Try demo</b> to see how it works.
+</div>
+
+<div class="grid" id="cards"></div>
+
+<section class="chart">
+  <h2>Temperature graph</h2>
+  <div class="legend" id="legend"></div>
+  <canvas id="chart"></canvas>
+</section>
+
+<footer>
+  Tip: set Auto-Lock to "Never" while cooking. If the screen locks, the probes disconnect. Food continues to rise 2–5° while resting, so the targets here are "take it off the heat" temperatures. Chicken, turkey, burgers and sausages should always be cooked through.
+</footer>
+
+<template id="cardTpl">
+  <div class="card">
+    <div class="row">
+      <input class="name" aria-label="Probe name">
+      <div class="status"><i class="dot"></i><span class="stxt">Not connected</span></div>
+    </div>
+    <div class="row">
+      <div class="temp"><span class="tval">--</span><small class="tunit">°C</small></div>
+      <button class="primary conn">Connect</button>
+    </div>
+    <div class="sub"><span class="amb">Ambient --</span><span class="bat">Battery --</span></div>
+    <div class="alarm" hidden><span class="atxt"></span><button class="stop">OK</button></div>
+    <div class="pick">
+      <label>Meat<select class="meat"></select></label>
+      <label>Doneness<select class="level"></select></label>
+    </div>
+    <label class="customWrap" hidden style="font-size:13px;color:var(--muted)">Custom target<input type="number" class="custom" inputmode="decimal" step="1"></label>
+    <div>
+      <div class="target"><span>Target</span><b class="tgt">--</b></div>
+      <div class="bar"><div></div></div>
+    </div>
+    <div class="eta">--<span>Ready time appears once the temperature is rising steadily.</span></div>
+    <details><summary>Raw Bluetooth data</summary><code class="raw">none yet</code><button class="all" style="margin-top:8px">Can't find the probe? Show all devices</button></details>
+  </div>
+</template>
+
+<script>
+(() => {
+// ---------- Meat targets (°C, "remove from heat" temperatures) ----------
+const MEATS = [
+  { id: 'beef', label: 'Beef (steak / roast)', levels: [['Blue', 46], ['Rare', 50], ['Medium rare', 54], ['Medium', 58], ['Medium well', 63], ['Well done', 68]] },
+  { id: 'lamb', label: 'Lamb', levels: [['Rare', 52], ['Medium rare', 55], ['Medium', 60], ['Medium well', 65], ['Well done', 70]] },
+  { id: 'pork', label: 'Pork (chops / loin)', levels: [['Juicy, slightly pink', 63], ['Well done', 70]] },
+  { id: 'pulled', label: 'Pork shoulder (pulled)', levels: [['Sliceable', 85], ['Pull apart', 93]] },
+  { id: 'brisket', label: 'Beef brisket / short rib', levels: [['Sliceable', 88], ['Probe tender', 94]] },
+  { id: 'chickenB', label: 'Chicken / turkey breast', levels: [['Cooked through', 74]] },
+  { id: 'chickenT', label: 'Chicken thighs / legs', levels: [['Cooked through', 77], ['Tender', 82]] },
+  { id: 'whole', label: 'Whole chicken / turkey (thigh)', levels: [['Cooked through', 77]] },
+  { id: 'duck', label: 'Duck breast', levels: [['Pink', 57], ['Medium', 62], ['Well done', 68]] },
+  { id: 'mince', label: 'Burgers / sausages', levels: [['Cooked through', 72]] },
+  { id: 'venison', label: 'Venison', levels: [['Rare', 50], ['Medium rare', 54], ['Medium', 58]] },
+  { id: 'salmon', label: 'Salmon', levels: [['Medium', 50], ['Well done', 56]] },
+  { id: 'fish', label: 'White fish', levels: [['Cooked', 60]] },
+  { id: 'custom', label: 'Custom', levels: [['Custom', null]] },
+];
+
+// ---------- Bluetooth UUIDs (community reverse-engineered) ----------
+const uuid16 = n => `0000${n}-0000-1000-8000-00805f9b34fb`;
+const SVC_P = uuid16('fff0'), CHR_P = uuid16('fff1');   // INT-11P-B
+const SVC_I = uuid16('ff00'), CHR_I = uuid16('ff01');   // INT-11I-B (and some P-B units)
+const SVC_BAT = 'battery_service', CHR_BAT = 'battery_level';
+
+// ---------- Helpers ----------
+const $ = (el, s) => el.querySelector(s);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('mpm.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('mpm.' + k, JSON.stringify(v)); } catch {} },
+};
+let unit = store.get('unit', 'C');
+const toU = c => unit === 'F' ? c * 9 / 5 + 32 : c;
+const fmtT = (c, d = 0) => c == null || isNaN(c) ? '--' : toU(c).toFixed(d);
+const fmtDelta = c => unit === 'F' ? c * 9 / 5 : c;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const hex = dv => Array.from(new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+
+// Clock (demo mode runs 30x faster so the estimate can be seen)
+let demo = false, demoBase = 0, demoReal = 0;
+const SPEED = 30;
+const now = () => demo ? demoBase + (Date.now() - demoReal) * SPEED : Date.now();
+
+// ---------- Audio alarm (iPad needs a tap first to unlock sound) ----------
+let actx = null;
+function unlockAudio() {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch {}
+}
+function beep(freq = 880, dur = 0.18, when = 0) {
+  if (!actx) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'square'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, actx.currentTime + when);
+  g.gain.exponentialRampToValueAtTime(0.35, actx.currentTime + when + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + when + dur);
+  o.connect(g).connect(actx.destination);
+  o.start(actx.currentTime + when); o.stop(actx.currentTime + when + dur + 0.05);
+}
+let alarmTimer = null;
+function updateAlarmSound() {
+  const ringing = probes.some(p => p.alarm === 'done');
+  if (ringing && !alarmTimer) {
+    const ring = () => { beep(988, .15, 0); beep(988, .15, .25); beep(1319, .3, .5); };
+    ring(); alarmTimer = setInterval(ring, 2000);
+  } else if (!ringing && alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; }
+}
+
+// Keep the screen awake where supported
+let wakeLock = null;
+async function keepAwake() {
+  try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && probes.some(p => p.connected)) keepAwake(); });
+
+// ---------- Probe state ----------
+const probes = [0, 1].map(i => ({
+  i, name: store.get(`name${i}`, `Probe ${i + 1}`),
+  meat: store.get(`meat${i}`, i === 0 ? 'beef' : 'chickenB'),
+  level: store.get(`level${i}`, 2), custom: store.get(`custom${i}`, 60),
+  device: null, chr: null, batChr: null, kind: null, poll: null,
+  connected: false, temp: null, ambient: null, battery: null, caseBattery: null,
+  history: [], alarm: null, dismissed: { soon: false, done: false }, el: null, color: i === 0 ? '--p1' : '--p2',
+}));
+
+const meatOf = p => MEATS.find(m => m.id === p.meat) || MEATS[0];
+const targetOf = p => p.meat === 'custom' ? Number(p.custom) : (meatOf(p).levels[p.level] || meatOf(p).levels[0])[1];
+
+// ---------- Build cards ----------
+const tpl = document.getElementById('cardTpl');
+const cards = document.getElementById('cards');
+probes.forEach(p => {
+  const el = tpl.content.firstElementChild.cloneNode(true);
+  p.el = el;
+  el.style.setProperty('--pc', `var(${p.color})`);
+  const name = $(el, '.name'); name.value = p.name;
+  name.addEventListener('change', () => { p.name = name.value || `Probe ${p.i + 1}`; store.set(`name${p.i}`, p.name); drawLegend(); });
+
+  const meat = $(el, '.meat'), level = $(el, '.level');
+  MEATS.forEach(m => meat.add(new Option(m.label, m.id)));
+  meat.value = p.meat;
+  const fillLevels = () => {
+    level.innerHTML = '';
+    meatOf(p).levels.forEach(([n, t], idx) => level.add(new Option(t == null ? n : `${n} (${fmtT(t)}°)`, idx)));
+    if (p.level >= meatOf(p).levels.length) p.level = Math.min(2, meatOf(p).levels.length - 1);
+    level.value = p.level;
+    level.disabled = meatOf(p).levels.length < 2;
+    $(el, '.customWrap').hidden = p.meat !== 'custom';
+    $(el, '.custom').value = Math.round(toU(Number(p.custom)));
+  };
+  p.fillLevels = fillLevels;
+  fillLevels();
+  meat.addEventListener('change', () => { p.meat = meat.value; p.level = Math.min(2, meatOf(p).levels.length - 1); store.set(`meat${p.i}`, p.meat); store.set(`level${p.i}`, p.level); fillLevels(); resetAlarm(p); render(p); });
+  level.addEventListener('change', () => { p.level = Number(level.value); store.set(`level${p.i}`, p.level); resetAlarm(p); render(p); });
+  $(el, '.custom').addEventListener('input', e => {
+    const v = Number(e.target.value); if (!v) return;
+    p.custom = unit === 'F' ? (v - 32) * 5 / 9 : v; store.set(`custom${p.i}`, p.custom); resetAlarm(p); render(p);
+  });
+
+  $(el, '.conn').addEventListener('click', () => { unlockAudio(); p.connected || p.device ? disconnect(p) : connect(p, false); });
+  $(el, '.all').addEventListener('click', () => { unlockAudio(); connect(p, true); });
+  $(el, '.stop').addEventListener('click', () => { if (p.alarm) p.dismissed[p.alarm] = true; p.alarm = null; render(p); updateAlarmSound(); });
+  cards.appendChild(el);
+});
+
+function resetAlarm(p) { p.dismissed = { soon: false, done: false }; p.alarm = null; updateAlarmSound(); }
+
+// ---------- Bluetooth ----------
+const hasBt = !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
+if (!hasBt) document.getElementById('noBt').hidden = false;
+
+function setStatus(p, text, cls) {
+  $(p.el, '.stxt').textContent = text;
+  $(p.el, '.dot').className = 'dot ' + (cls || '');
+  $(p.el, '.conn').textContent = p.device || p.connected ? 'Disconnect' : 'Connect';
+}
+
+async function connect(p, showAll) {
+  if (demo) stopDemo();
+  if (!hasBt) { document.getElementById('noBt').hidden = false; return; }
+  try {
+    const opts = {
+      optionalServices: [SVC_P, SVC_I, SVC_BAT],
+      ...(showAll ? { acceptAllDevices: true } : { filters: [{ namePrefix: 'INT-11' }, { namePrefix: 'int-11' }, { namePrefix: 'INT' }, { services: [SVC_P] }, { services: [SVC_I] }] }),
+    };
+    const device = await navigator.bluetooth.requestDevice(opts);
+    if (probes.some(q => q !== p && q.device && q.device.id === device.id)) { alert('That probe is already connected in the other panel.'); return; }
+    p.device = device;
+    if (!p.name || /^Probe \d$/.test(p.name)) { /* keep user name */ }
+    device.addEventListener('gattserverdisconnected', () => onDisconnected(p));
+    await openGatt(p);
+    keepAwake();
+  } catch (e) {
+    if (e && e.name === 'NotFoundError') return; // user cancelled
+    setStatus(p, 'Could not connect', 'busy');
+    $(p.el, '.raw').textContent = 'Error: ' + (e && e.message || e);
+  }
+}
+
+async function openGatt(p) {
+  setStatus(p, 'Connecting…', 'busy');
+  const server = await p.device.gatt.connect();
+  let svc = null;
+  try { svc = await server.getPrimaryService(SVC_P); p.kind = 'P'; p.chr = await svc.getCharacteristic(CHR_P); }
+  catch { svc = await server.getPrimaryService(SVC_I); p.kind = 'I'; p.chr = await svc.getCharacteristic(CHR_I); }
+  try { const b = await server.getPrimaryService(SVC_BAT); p.batChr = await b.getCharacteristic(CHR_BAT); } catch { p.batChr = null; }
+
+  if (p.chr.properties.notify) {
+    try { p.chr.addEventListener('characteristicvaluechanged', e => onData(p, e.target.value)); await p.chr.startNotifications(); } catch {}
+  }
+  p.connected = true;
+  setStatus(p, 'Connected', 'on');
+  clearInterval(p.poll);
+  const tick = async () => {
+    if (!p.connected) return;
+    try {
+      if (p.chr.properties.read) onData(p, await p.chr.readValue());
+      if (p.batChr) onBattery(p, await p.batChr.readValue());
+    } catch {}
+  };
+  tick(); p.poll = setInterval(tick, 3000);
+}
+
+function onData(p, dv) {
+  $(p.el, '.raw').textContent = `${p.kind === 'P' ? 'fff1' : 'ff01'}: ${hex(dv)}`;
+  let t = null;
+  if (p.kind === 'P' && dv.byteLength >= 6) {
+    t = dv.getUint8(1);
+    const amb = dv.getUint8(3); p.ambient = amb ? amb : null;
+    p.battery = dv.getUint8(4) & 0x7f;
+    p.caseBattery = dv.getUint8(5) >> 1;
+  } else if (p.kind === 'I' && dv.byteLength >= 2) {
+    const f = dv.getUint16(0, true) / 100;
+    t = Math.round((f - 32) * 5 / 9 * 10) / 10;
+  }
+  if (t != null && t > -40 && t < 400) addReading(p, t);
+}
+function onBattery(p, dv) {
+  if (dv.byteLength >= 2) { p.caseBattery = Math.min(100, dv.getUint8(0)); p.battery = Math.min(100, dv.getUint8(1)); }
+  else if (dv.byteLength === 1) p.battery = Math.min(100, dv.getUint8(0));
+  render(p);
+}
+
+function onDisconnected(p) {
+  p.connected = false; clearInterval(p.poll);
+  if (!p.device) return;
+  setStatus(p, 'Reconnecting…', 'busy');
+  let tries = 0;
+  const retry = async () => {
+    if (!p.device || p.connected) return;
+    try { await openGatt(p); }
+    catch { if (++tries < 20) setTimeout(retry, 3000); else setStatus(p, 'Lost connection – tap Connect', ''); }
+  };
+  setTimeout(retry, 1000);
+}
+
+function disconnect(p) {
+  const d = p.device; p.device = null; p.connected = false; clearInterval(p.poll);
+  try { d && d.gatt.connected && d.gatt.disconnect(); } catch {}
+  setStatus(p, 'Not connected', '');
+}
+
+// ---------- Readings, estimate, alarms ----------
+function addReading(p, t) {
+  p.temp = t;
+  const ts = now();
+  const last = p.history[p.history.length - 1];
+  if (!last || ts - last.t >= 5000) p.history.push({ t: ts, v: t });
+  if (p.history.length > 6000) p.history.shift();
+  checkAlarm(p);
+  render(p);
+  drawChart();
+}
+
+function estimate(p) {
+  const target = targetOf(p);
+  if (p.temp == null || !target) return null;
+  if (p.temp >= target) return { done: true };
+  const tNow = now();
+  const pts = p.history.filter(h => h.t >= tNow - 10 * 60000);
+  if (pts.length < 6 || pts[pts.length - 1].t - pts[0].t < 3 * 60000) return { wait: true };
+  // least-squares slope in °C per minute
+  const n = pts.length, x0 = pts[0].t;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  pts.forEach(h => { const x = (h.t - x0) / 60000; sx += x; sy += h.v; sxx += x * x; sxy += x * h.v; });
+  const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+  if (!(slope > 0.05)) return { stalled: true, slope };
+  const mins = (target - p.temp) / slope;
+  return { mins, at: tNow + mins * 60000, slope };
+}
+
+function checkAlarm(p) {
+  const target = targetOf(p);
+  if (p.temp == null || !target) return;
+  if (p.temp >= target) { if (!p.dismissed.done) p.alarm = 'done'; }
+  else if (p.temp >= target - 5) { if (!p.dismissed.soon && p.alarm !== 'soon') { p.alarm = 'soon'; beep(660, .2); beep(880, .2, .3); } }
+  else if (p.temp < target - 8) { p.dismissed = { soon: false, done: false }; p.alarm = null; }
+  updateAlarmSound();
+}
+
+// ---------- Rendering ----------
+function render(p) {
+  const el = p.el, target = targetOf(p);
+  $(el, '.tval').textContent = fmtT(p.temp, unit === 'F' || p.kind !== 'I' ? 0 : 1);
+  $(el, '.tunit').textContent = '°' + unit;
+  $(el, '.amb').textContent = 'Ambient ' + (p.ambient == null ? '--' : fmtT(p.ambient) + '°' + unit);
+  const bats = [p.battery != null ? `Probe ${p.battery}%` : null, p.caseBattery != null ? `Case ${p.caseBattery}%` : null].filter(Boolean);
+  $(el, '.bat').textContent = 'Battery ' + (bats.length ? bats.join(' · ') : '--');
+  $(el, '.tgt').textContent = target ? `${fmtT(target)}°${unit}` : '--';
+  const start = p.history.length ? Math.min(p.history[0].v, p.temp) : 0;
+  const pct = p.temp == null || !target ? 0 : Math.max(0, Math.min(100, (p.temp - start) / Math.max(1, target - start) * 100));
+  $(el, '.bar > div').style.width = pct + '%';
+
+  const etaEl = $(el, '.eta'), e = estimate(p);
+  const set = (main, sub) => { etaEl.firstChild.nodeValue = main; etaEl.lastChild.textContent = sub; };
+  if (!e) set('--', 'Ready time appears once the temperature is rising steadily.');
+  else if (e.done) set('Ready', 'Take it off the heat and let it rest.');
+  else if (e.wait) set('Estimating…', 'Needs a few minutes of readings first.');
+  else if (e.stalled) set('Holding steady', 'Not rising right now (normal during a long-cook "stall"). No estimate yet.');
+  else {
+    const m = Math.round(e.mins), txt = m < 1 ? 'Under a minute' : m < 60 ? `About ${m} min` : `About ${Math.floor(m / 60)} h ${m % 60} min`;
+    set(`${txt} · ready ~${hhmm(e.at)}`, `Rising ${fmtDelta(e.slope).toFixed(1)}°/min. Rough estimate; it usually slows near the end.`);
+  }
+
+  const a = $(el, '.alarm');
+  if (p.alarm) {
+    a.hidden = false; a.classList.toggle('soon', p.alarm === 'soon');
+    $(el, '.atxt').textContent = p.alarm === 'done' ? `${p.name}: target reached!` : `${p.name}: within 5° of target`;
+  } else a.hidden = true;
+}
+
+// ---------- Chart ----------
+const canvas = document.getElementById('chart');
+function drawLegend() {
+  document.getElementById('legend').innerHTML = probes.map(p => `<span><i style="background:var(${p.color})"></i>${p.name.replace(/[<&]/g, '')}</span>`).join('') +
+    '<span><i style="background:repeating-linear-gradient(90deg,var(--muted) 0 4px,transparent 4px 7px)"></i>Targets</span>';
+}
+function drawChart() {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const c = canvas.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const all = probes.flatMap(p => p.history);
+  const L = 40, R = 10, T = 10, B = 26;
+  c.font = '12px -apple-system, system-ui, sans-serif'; c.fillStyle = css('--muted');
+  if (!all.length) { c.textAlign = 'center'; c.fillText('Readings will appear here once a probe is connected.', w / 2, h / 2); return; }
+  const tNow = now(), t0 = Math.min(...all.map(h => h.t)), t1 = Math.max(tNow, t0 + 60000);
+  const targets = probes.filter(p => p.history.length).map(targetOf).filter(Boolean);
+  let lo = Math.min(...all.map(h => h.v)), hi = Math.max(...all.map(h => h.v), ...targets);
+  lo = Math.floor((lo - 3) / 10) * 10; hi = Math.ceil((hi + 3) / 10) * 10;
+  const X = t => L + (t - t0) / (t1 - t0) * (w - L - R), Y = v => T + (1 - (v - lo) / (hi - lo)) * (h - T - B);
+  // grid
+  c.strokeStyle = css('--line'); c.lineWidth = 1; c.textAlign = 'right'; c.textBaseline = 'middle';
+  const step = (hi - lo) > 60 ? 20 : 10;
+  for (let v = lo; v <= hi; v += step) { c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(w - R, Y(v)); c.stroke(); c.fillText(fmtT(v) + '°', L - 6, Y(v)); }
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  const span = t1 - t0, tick = span > 4 * 3600e3 ? 3600e3 : span > 90 * 60e3 ? 30 * 60e3 : span > 30 * 60e3 ? 10 * 60e3 : 5 * 60e3;
+  for (let t = Math.ceil(t0 / tick) * tick; t <= t1; t += tick) c.fillText(hhmm(t), X(t), h - B + 8);
+  // targets + lines
+  probes.forEach(p => {
+    if (!p.history.length) return;
+    const col = css(p.color), tg = targetOf(p);
+    if (tg) { c.setLineDash([5, 4]); c.strokeStyle = col; c.globalAlpha = .6; c.beginPath(); c.moveTo(L, Y(tg)); c.lineTo(w - R, Y(tg)); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
+    c.strokeStyle = col; c.lineWidth = 2.5; c.lineJoin = 'round'; c.beginPath();
+    p.history.forEach((pt, k) => k ? c.lineTo(X(pt.t), Y(pt.v)) : c.moveTo(X(pt.t), Y(pt.v)));
+    c.stroke(); c.lineWidth = 1;
+  });
+}
+window.addEventListener('resize', drawChart);
+
+// ---------- Units ----------
+function setUnit(u) {
+  unit = u; store.set('unit', u);
+  document.getElementById('uC').setAttribute('aria-pressed', u === 'C');
+  document.getElementById('uF').setAttribute('aria-pressed', u === 'F');
+  probes.forEach(p => { p.fillLevels(); render(p); });
+  drawChart();
+}
+document.getElementById('uC').onclick = () => setUnit('C');
+document.getElementById('uF').onclick = () => setUnit('F');
+
+// ---------- Demo mode ----------
+let demoTimer = null;
+const demoBtn = document.getElementById('demoBtn');
+function startDemo() {
+  probes.forEach(disconnect);
+  demo = true; demoBase = Date.now(); demoReal = Date.now();
+  const sims = [{ v: 6, amb: 180, k: 0.012 }, { v: 4, amb: 200, k: 0.009 }];
+  probes.forEach((p, i) => { p.history = []; p.temp = null; resetAlarm(p); p.battery = 87 - i * 12; p.caseBattery = 64; p.kind = 'P'; p.connected = true; setStatus(p, 'Demo (30× speed)', 'on'); });
+  demoTimer = setInterval(() => {
+    probes.forEach((p, i) => {
+      const s = sims[i];
+      s.v += (s.amb - s.v) * s.k * (SPEED / 60) * 0.5 + (Math.random() - .5) * .3;
+      p.ambient = s.amb + Math.round((Math.random() - .5) * 6);
+      addReading(p, Math.round(s.v * 10) / 10);
+    });
+  }, 1000);
+  demoBtn.textContent = 'Stop demo';
+}
+function stopDemo() {
+  clearInterval(demoTimer); demo = false;
+  probes.forEach(p => { p.connected = false; p.history = []; p.temp = null; p.ambient = null; p.battery = null; p.caseBattery = null; resetAlarm(p); setStatus(p, 'Not connected', ''); render(p); });
+  demoBtn.textContent = 'Try demo'; drawChart();
+}
+demoBtn.onclick = () => { unlockAudio(); demo ? stopDemo() : startDemo(); };
+
+// refresh estimates every few seconds even between readings
+setInterval(() => probes.forEach(render), 5000);
+
+setUnit(unit); drawLegend(); probes.forEach(p => { setStatus(p, 'Not connected', ''); render(p); }); drawChart();
+})();
+</script>
+</body>
+</html>
